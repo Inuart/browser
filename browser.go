@@ -1,3 +1,5 @@
+// +build !appengine
+
 package browser
 
 import (
@@ -5,8 +7,8 @@ import (
 	"runtime"
 )
 
-// Open the URL in a browser
-func Open(url string) error {
+// Tab the URL in a browser
+func Tab(url string) error {
 	var cmd string
 	var args []string
 
@@ -25,19 +27,23 @@ func Open(url string) error {
 
 // App opens the URL in a browser app
 func App(url string) error {
+	var args []string
 	switch runtime.GOOS {
 	case "windows":
-		return exec.Command("cmd", "/c", "start", "chrome", "--app="+url).Start()
+		args = []string{"cmd", "/c", "start", "chrome"}
 	case "darwin":
+		args = []string{`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`}
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		args = []string{"google-chrome"}
 	}
-	// "linux", "freebsd", "openbsd", "netbsd"
-	return exec.Command("google-chrome", "--app="+url).Start()
+	args = append(args, "--app="+url)
+	return exec.Command(args[0], args[1:]...).Start()
 }
 
 // AppOrTab opens the URL in a browser app or, if it fails, a tab
 func AppOrTab(url string) error {
 	if err := App(url); err != nil {
-		return Open(url)
+		return Tab(url)
 	}
 	return nil
 }
