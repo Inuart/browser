@@ -3,11 +3,12 @@
 package browser
 
 import (
+	"errors"
 	"os/exec"
 	"runtime"
 )
 
-// Tab the URL in a browser
+// Tab opens the URL in a default browser tab
 func Tab(url string) error {
 	var cmd string
 	var args []string
@@ -25,7 +26,7 @@ func Tab(url string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
-// App opens the URL in a browser app
+// App opens the URL in a Chrome app
 func App(url string) error {
 	var args []string
 	switch runtime.GOOS {
@@ -40,10 +41,29 @@ func App(url string) error {
 	return exec.Command(args[0], args[1:]...).Start()
 }
 
-// AppOrTab opens the URL in a browser app or, if it fails, a tab
+// AppOrTab opens the URL in a Chrome app, a preinstalled
+// browser app, or default browser tab
 func AppOrTab(url string) error {
+	/*var err error
+	for _, f := range []func(string) error{App, DefaultApp, Tab} {
+		if err = f(url); err != nil {
+			continue
+		}
+	}
+	return nil*/
 	if err := App(url); err != nil {
 		return Tab(url)
 	}
 	return nil
+}
+
+// DefaultApp opens the app in the preinstalled browser
+func DefaultApp(url string) error {
+	switch runtime.GOOS {
+	case "windows": // todo
+		return exec.Command("cmd", "/c", "start", "microsoft-edge:"+url).Start()
+	case "darwin":
+	default:
+	}
+	return errors.New("not implemented")
 }
