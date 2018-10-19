@@ -8,6 +8,9 @@ import (
 	"runtime"
 )
 
+// Incognito indicates if the browser should use your credentials
+var Incognito bool
+
 // Tab opens the URL in a default browser tab
 func Tab(url string) error {
 	var cmd string
@@ -38,6 +41,9 @@ func App(url string) error {
 		args = []string{"google-chrome"}
 	}
 	args = append(args, "--app="+url)
+	if Incognito {
+		args = append(args, "--incognito")
+	}
 	return exec.Command(args[0], args[1:]...).Start()
 }
 
