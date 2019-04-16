@@ -1,6 +1,6 @@
 package main
 
-import "bitbucket.org/Inuart/browser"
+import "github.com/Inuart/browser"
 
 func main() {
 	browser.Incognito = true
