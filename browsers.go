@@ -1,9 +1,20 @@
 package browser
 
 import (
-	"errors"
 	"runtime"
 )
+
+// Preferred opens the url in the user's prefered browser.
+func Preferred(c Config) (cmd string, args []string) {
+	switch runtime.GOOS {
+	case "windows":
+		return "cmd", []string{"/c", "start", c.URL}
+	case "darwin":
+		return "open", []string{c.URL}
+	default: // "linux", "freebsd", "openbsd", "netbsd", ...
+		return "xdg-open", []string{c.URL}
+	}
+}
 
 func chrome() (cmd string, args []string) {
 	switch runtime.GOOS {
@@ -17,26 +28,22 @@ func chrome() (cmd string, args []string) {
 }
 
 // Chrome opens the url in Chrome.
-func (c Config) Chrome(url string) error {
-	cmd, args := chrome()
+func Chrome(c Config) (cmd string, args []string) {
+	cmd, args = chrome()
 
 	if c.AsApp {
-		url = "--app=" + url
+		c.URL = "--app=" + c.URL
 	}
-	args = append(args, url)
+	args = append(args, c.URL)
 
 	if c.Private {
 		args = append(args, "--incognito")
 	}
 
-	return c.start(cmd, args...)
+	return cmd, args
 }
 
-// Chrome opens the url in Chrome.
-func Chrome(url string) error {
-	return DefaultCfg.Chrome(url)
-}
-
+/*
 func firefox() (cmd string, args []string) {
 	switch runtime.GOOS {
 	case "windows":
@@ -113,3 +120,4 @@ func (c Config) Safari(url string) error {
 func Safari(url string) error {
 	return DefaultCfg.Safari(url)
 }
+*/

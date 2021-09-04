@@ -1,51 +1,63 @@
 package browser
 
 import (
+	"context"
+	"net"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os/exec"
-	"runtime"
 )
 
 type Config struct {
-	AsApp   bool
-	Private bool
+	URL            string
+	AsApp          bool
+	Private        bool
+	ModifyResponse ResponseModifier
 }
 
-var DefaultCfg Config
+type BrowserCmd func(c Config) (cmd string, args []string)
 
-func (c Config) start(cmd string, args ...string) error {
+func Open(url string) error {
+	return Browse(context.Background(), Config{URL: url}, nil)
+}
+
+func Browse(ctx context.Context, c Config, b BrowserCmd) error {
+	if c.ModifyResponse != nil {
+		url := c.URL
+		c.URL = "http://localhost:8080"
+		go func() {
+			if err := postprocess(ctx, url, c.ModifyResponse); err != nil {
+				println(err.Error())
+			}
+		}()
+	}
+	if b == nil {
+		b = Preferred
+	}
+
+	cmd, args := b(c)
 	return exec.Command(cmd, args...).Start()
 }
 
-// Preferred opens the url in the user prefered browser.
-func (c Config) Preferred(url string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return c.start("cmd", "/c", "start", url)
-	case "darwin":
-		return c.start("open", url)
-	default: // "linux", "freebsd", "openbsd", "netbsd", ...
-		return c.start("xdg-open", url)
+type ResponseModifier func(*http.Response) error
+
+func postprocess(ctx context.Context, target string, rm ResponseModifier) error {
+	u, err := url.Parse(target)
+	if err != nil {
+		return err
 	}
-}
 
-// Preferred opens the url in the user prefered browser.
-func Preferred(url string) error {
-	return DefaultCfg.Preferred(url)
-}
+	rp := httputil.NewSingleHostReverseProxy(u)
+	rp.ModifyResponse = rm
+	http.Handle("/", rp)
 
-// Default opens the url in the default browser.
-func (c Config) Default(url string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return c.Edge(url)
-	case "darwin":
-		return c.Safari(url)
-	default:
-		return c.Firefox(url)
+	addr := ":8080"
+	var lc net.ListenConfig
+	ln, err := lc.Listen(context.Background(), "tcp", addr)
+	if err != nil {
+		return err
 	}
-}
-
-// Default opens the url in the default browser.
-func Default(url string) error {
-	return DefaultCfg.Default(url)
+	srv := &http.Server{Addr: addr, Handler: rp}
+	return srv.Serve(ln)
 }
