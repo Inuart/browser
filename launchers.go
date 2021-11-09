@@ -24,10 +24,17 @@ func Open(url string) error {
 
 func Browse(ctx context.Context, c Config, b BrowserCmd) error {
 	if c.ModifyResponse != nil {
-		url := c.URL
-		c.URL = "http://localhost:8080"
+		target, err := url.Parse(c.URL)
+		if err != nil {
+			return err
+		}
+		lh := *target
+		lh.Scheme = "http"
+		lh.Host = "localhost:8080"
+		c.URL = lh.String()
+		target.Path = ""
 		go func() {
-			if err := postprocess(ctx, url, c.ModifyResponse); err != nil {
+			if err := modifyResponse(ctx, target, c.ModifyResponse); err != nil {
 				println(err.Error())
 			}
 		}()
@@ -42,22 +49,22 @@ func Browse(ctx context.Context, c Config, b BrowserCmd) error {
 
 type ResponseModifier func(*http.Response) error
 
-func postprocess(ctx context.Context, target string, rm ResponseModifier) error {
-	u, err := url.Parse(target)
-	if err != nil {
-		return err
+func modifyResponse(ctx context.Context, target *url.URL, rm ResponseModifier) error {
+	rp := httputil.NewSingleHostReverseProxy(target)
+	shrp := rp.Director
+	rp.Director = func(req *http.Request) {
+		req.Host = target.Host
+		shrp(req)
 	}
-
-	rp := httputil.NewSingleHostReverseProxy(u)
 	rp.ModifyResponse = rm
 	http.Handle("/", rp)
 
 	addr := ":8080"
 	var lc net.ListenConfig
-	ln, err := lc.Listen(context.Background(), "tcp", addr)
+	ln, err := lc.Listen(ctx, "tcp", addr)
 	if err != nil {
 		return err
 	}
-	srv := &http.Server{Addr: addr, Handler: rp}
+	srv := http.Server{Addr: addr, Handler: rp}
 	return srv.Serve(ln)
 }
