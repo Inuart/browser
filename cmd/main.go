@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/Inuart/browser"
@@ -22,11 +21,12 @@ func main() {
 	err := browser.Browse(ctx, browser.Config{
 		URL: "https://google.com",
 
+		AsApp:   true,
 		Private: true,
-		ModifyResponse: func(r *http.Response) error {
-			println(r.Request.URL.String())
-			return nil
-		},
+		// ModifyResponse: func(r *http.Response) error {
+		// 	println(r.Request.URL.String())
+		// 	return nil
+		// },
 	}, browser.Chrome)
 	if err != nil {
 		println(err.Error())

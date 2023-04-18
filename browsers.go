@@ -27,9 +27,65 @@ func chrome() (cmd string, args []string) {
 	}
 }
 
-// Chrome opens the url in Chrome.
-func Chrome(c Config) (cmd string, args []string) {
+// Chrome opens chrome using cfg.
+func Chrome(cfg Config) (cmd string, args []string) {
 	cmd, args = chrome()
+
+	if cfg.AsApp {
+		cfg.URL = "--app=" + cfg.URL
+	}
+
+	args = append(args, cfg.URL)
+
+	if cfg.Private {
+		args = append(args, "--incognito")
+	}
+
+	return cmd, args
+}
+
+func firefox() (cmd string, args []string) {
+	switch runtime.GOOS {
+	case "windows":
+		return "cmd", []string{"/c", "start", "firefox"}
+	case "darwin":
+		return "/Applications/Firefox.app/Contents/MacOS/Firefox", nil
+	default:
+		return "firefox", nil
+	}
+}
+
+// Firefox opens firefox using cfg.
+func Firefox(c Config) (cmd string, args []string) {
+	cmd, args = firefox()
+
+	if c.AsApp {
+		args = append(args, "--kiosk") // just a maximized window
+	}
+
+	if c.Private {
+		args = append(args, "-private-window") // this sometimes works
+	}
+
+	args = append(args, c.URL)
+
+	return cmd, args
+}
+
+func edge() (cmd string, args []string) {
+	switch runtime.GOOS {
+	case "windows":
+		return "cmd", []string{"/c", "start", "msedge"}
+	case "darwin":
+		return "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", nil
+	default:
+		return "microsoft-edge", nil
+	}
+}
+
+// Edge opens edge using cfg.
+func Edge(c Config) (cmd string, args []string) {
+	cmd, args = edge()
 
 	if c.AsApp {
 		c.URL = "--app=" + c.URL
@@ -44,69 +100,6 @@ func Chrome(c Config) (cmd string, args []string) {
 }
 
 /*
-func firefox() (cmd string, args []string) {
-	switch runtime.GOOS {
-	case "windows":
-		return "cmd", []string{"/c", "start", "firefox"}
-	case "darwin":
-		return "/Applications/Firefox.app/Contents/MacOS/Firefox", nil
-	default:
-		return "firefox", nil
-	}
-}
-
-// Firefox opens the URL in Firefox. Needs testing.
-func (c Config) Firefox(url string) error {
-	cmd, args := firefox()
-
-	if c.AsApp {
-		args = append(args, "--kiosk") // just a maximized window
-	}
-	if c.Private {
-		args = append(args, "-private-window") // this sometimes works
-	}
-	args = append(args, url)
-
-	return c.start(cmd, args...)
-}
-
-// Firefox opens the URL in Firefox.
-func Firefox(url string) error {
-	return DefaultCfg.Firefox(url)
-}
-
-func edge() (cmd string, args []string) {
-	switch runtime.GOOS {
-	case "windows":
-		return "cmd", []string{"/c", "start", "microsoft-edge"}
-	case "darwin":
-		return "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", nil
-	default:
-		return "microsoft-edge", nil
-	}
-}
-
-// Edge opens the URL in Edge.
-func (c Config) Edge(url string) error {
-	cmd, args := edge()
-
-	if c.AsApp {
-		url = "--app=" + url
-	}
-	args = append(args, url)
-
-	if c.Private {
-		args = append(args, "--incognito")
-	}
-
-	return c.start(cmd, args...)
-}
-
-// Edge opens the URL in Edge.
-func Edge(url string) error {
-	return DefaultCfg.Edge(url)
-}
-
 // Safari opens the URL in Safari.
 func (c Config) Safari(url string) error {
 	if runtime.GOOS != "darwin" {
